@@ -1,0 +1,10 @@
+[package]
+name = "time_cargo"
+version = "0.1.0"
+authors = ["Jonathan Turner <jturner@mozilla.com>", "Alex Crichton <alex@alexcrichton.com>"]
+
+[dependencies]
+cargo = "0.10"
+walkdir = "0.1"
+git2 = "0.4"
+libc = "0.2"
