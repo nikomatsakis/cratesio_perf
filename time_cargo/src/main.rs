@@ -106,7 +106,7 @@ fn build(out: &Path, src: &mut RegistrySource, id: &SourceId, krate: &str) {
     fs::create_dir_all(".cargo").unwrap();
     File::create(".cargo/config").unwrap().write_all("
         [build]
-        target-dir = '/Users/nope/Source/time_cargo/foo'
+        target-dir = '/Users/jturner/Source/cratesio_perf/common'
     ".as_bytes()).unwrap();
 
     let config = config();
