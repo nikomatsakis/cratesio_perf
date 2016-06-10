@@ -24,9 +24,7 @@ use walkdir::{WalkDir, DirEntry, WalkDirIterator};
 
 // Write the Docopt usage string.
 const USAGE: &'static str = r#"
-Usage:
-  time_cargo build [options] <package-name>...
-  time_cargo test [options] <package-name>...
+Usage: time_cargo [options] <package-name>...
 
 Builds or tests the latest version of packages from crates.io, saving
 timing information and other results. If the special package-name "*"
@@ -37,16 +35,20 @@ WARNING: Building or testing packages from crates.io involves executing
 arbitary code! Be wary.
 
 Options:
-  -h, --help  Show this screen.
-  -o DIR      Output directory [default: out].
+  -h, --help             Show this screen.
+  -o <dir>, --out <dir>  Output directory [default: out].
+  -t, --test             Run tests.
+  -b, --bench            Run benchmarks.
+  -r, --release          Use release mode instead of debug.
 "#;
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
-    cmd_build: bool,
-    cmd_test: bool,
     flag_help: bool,
-    flag_o: String,
+    flag_out: String,
+    flag_test: bool,
+    flag_bench: bool,
+    flag_release: bool,
     arg_package_name: Vec<String>,
 }
 
@@ -56,7 +58,7 @@ fn main() {
         .and_then(|d| d.argv(env::args()).decode())
         .unwrap_or_else(|e| e.exit());
 
-    let root = PathBuf::from(args.flag_o.clone());
+    let root = PathBuf::from(args.flag_out.clone());
 
     let index = root.join("index");
     if fs::metadata(&index).is_err() {
@@ -181,24 +183,24 @@ fn build_or_test(args: &Args,
             benches: &[],
         },
         exec_engine: None,
-        release: true,
+        release: args.flag_release,
         mode: ops::CompileMode::Build,
         target_rustc_args: Some(rustc_args),
         target_rustdoc_args: None
     };
 
-    match ops::compile_pkg(&pkg, None, &compile_opts) {
+    let test_opts = ops::TestOptions {
+        compile_opts: compile_opts,
+        no_run: false,
+        no_fail_fast: false
+    };
+
+    match ops::compile_pkg(&pkg, None, &test_opts.compile_opts) {
         Ok(_) => println!("> compile passed for `{}`", pkg),
         Err(e) => println!("> compile failed for `{}`: {}", pkg, e)
     }
 
-    if args.cmd_test {
-        let test_opts = ops::TestOptions {
-            compile_opts: compile_opts,
-            no_run: false,
-            no_fail_fast: false
-        };
-
+    if args.flag_test {
         let start = Instant::now();
         let result = ops::run_tests(pkg.manifest_path(), &test_opts, &[]);
         let test_time = start.elapsed();
@@ -206,6 +208,18 @@ fn build_or_test(args: &Args,
         match result {
             Ok(None) => println!("> tests passed for `{}`: {:?}", pkg, test_time),
             Ok(Some(err)) => println!("> tests failed for `{}`: {}", pkg, err),
+            Err(err) => println!("> cargo error for `{}`: {}", pkg, err),
+        }
+    }
+
+    if args.flag_bench {
+        let start = Instant::now();
+        let result = ops::run_benches(pkg.manifest_path(), &test_opts, &[]);
+        let test_time = start.elapsed();
+
+        match result {
+            Ok(None) => println!("> benches passed for `{}`: {:?}", pkg, test_time),
+            Ok(Some(err)) => println!("> benches failed for `{}`: {}", pkg, err),
             Err(err) => println!("> cargo error for `{}`: {}", pkg, err),
         }
     }
