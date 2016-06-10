@@ -106,31 +106,35 @@ fn build(out: &Path, src: &mut RegistrySource, id: &SourceId, krate: &str) {
     fs::create_dir_all(".cargo").unwrap();
     File::create(".cargo/config").unwrap().write_all("
         [build]
-        target-dir = '/Users/jturner/Source/cratesio_perf/common'
+        target-dir = '/home/ec2-user/versioned/cratesio_perf/time_cargo/results'
     ".as_bytes()).unwrap();
 
     let config = config();
     let args = &["-Z".to_string(), "time-passes".to_string()];
-    let res = ops::compile_pkg(&pkg, None, &ops::CompileOptions {
-        config: &config,
-        jobs: None,
-        target: None,
-        features: &[],
-        no_default_features: false,
-        spec: &[],
-        filter: ops::CompileFilter::Only {
-            lib: true,
-            examples: &[],
-            bins: &[],
-            tests: &[],
-            benches: &[],
+    let res = ops::run_tests(&pkg, None, &ops::TestOptions {
+        compile_opts: CompileOptions {
+            config: &config,
+            jobs: None,
+            target: None,
+            features: &[],
+            no_default_features: false,
+            spec: &[],
+            filter: ops::CompileFilter::Only {
+                lib: true,
+                examples: &[],
+                bins: &[],
+                tests: &[],
+                benches: &[],
+            },
+            exec_engine: None,
+            release: true,
+            mode: ops::CompileMode::Build,
+            target_rustc_args: Some(args),
+            target_rustdoc_args: None
         },
-        exec_engine: None,
-        release: true,
-        mode: ops::CompileMode::Build,
-        target_rustc_args: Some(args),
-        target_rustdoc_args: None
-    });
+        no_run: false,
+        no_fail_fast: false,
+        ony_doc: false});
     fs::remove_file(".cargo/config").unwrap();
     if let Err(e) = res {
         println!("bad compile {}: {} {:?}", pkg, e, e.cause());
